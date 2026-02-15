@@ -1,6 +1,6 @@
 {
-  "name": "mycto_agent",
-  "version": "0.1.3",
+  "name": "openagent-ai",
+  "version": "0.1.1",
   "description": "A lightweight, extensible AI Agent framework with tool calling, MCP integration, and streaming support",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
