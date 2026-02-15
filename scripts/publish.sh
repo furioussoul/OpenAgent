@@ -7,7 +7,8 @@
 #   --git-only    只推送到 GitHub，不发布 npm
 #   --npm-only    只发布到 npm，不推送 GitHub
 #   --dry-run     模拟运行，不实际执行
-#   --bump        自动升级版本号 (patch/minor/major)
+#   --bump        指定升级版本号类型 (patch/minor/major)，默认 patch
+#   --no-bump     不升级版本号
 #   --help        显示帮助
 
 set -e
@@ -28,7 +29,8 @@ REPO_ROOT="$(dirname "$(dirname "$PACKAGE_DIR")")"
 GIT_PUSH=true
 NPM_PUBLISH=true
 DRY_RUN=false
-BUMP_VERSION=""
+BUMP_VERSION="patch"  # 默认自动升级 patch 版本
+NO_BUMP=false
 
 # 解析参数
 while [[ $# -gt 0 ]]; do
@@ -49,6 +51,10 @@ while [[ $# -gt 0 ]]; do
       BUMP_VERSION="$2"
       shift 2
       ;;
+    --no-bump)
+      NO_BUMP=true
+      shift
+      ;;
     --help|-h)
       echo "OpenAgent 发布脚本"
       echo ""
@@ -58,13 +64,15 @@ while [[ $# -gt 0 ]]; do
       echo "  --git-only        只推送到 GitHub，不发布 npm"
       echo "  --npm-only        只发布到 npm，不推送 GitHub"
       echo "  --dry-run         模拟运行，不实际执行"
-      echo "  --bump <type>     升级版本号 (patch/minor/major)"
+      echo "  --bump <type>     指定版本升级类型 (patch/minor/major)，默认 patch"
+      echo "  --no-bump         不升级版本号"
       echo "  --help, -h        显示帮助"
       echo ""
       echo "示例:"
-      echo "  ./scripts/publish.sh                    # 完整发布 (git + npm)"
+      echo "  ./scripts/publish.sh                    # 完整发布，自动升级 patch 版本"
       echo "  ./scripts/publish.sh --git-only        # 只推送到 GitHub"
-      echo "  ./scripts/publish.sh --bump patch      # 升级补丁版本后发布"
+      echo "  ./scripts/publish.sh --bump minor      # 升级 minor 版本后发布"
+      echo "  ./scripts/publish.sh --no-bump         # 不升级版本，直接发布"
       echo "  ./scripts/publish.sh --dry-run         # 模拟运行"
       exit 0
       ;;
@@ -143,24 +151,29 @@ build_project() {
 
 # 升级版本
 bump_version() {
-  if [ -n "$BUMP_VERSION" ]; then
-    log_info "升级版本号 ($BUMP_VERSION)..."
-    cd "$PACKAGE_DIR"
+  # 如果指定了 --no-bump，跳过版本升级
+  if [ "$NO_BUMP" = true ]; then
+    log_info "跳过版本升级 (--no-bump)"
+    return
+  fi
+  
+  log_info "升级版本号 ($BUMP_VERSION)..."
+  cd "$PACKAGE_DIR"
+  
+  CURRENT_VERSION=$(node -p "require('./package.json').version")
+  log_info "当前版本: $CURRENT_VERSION"
+  
+  if [ "$DRY_RUN" = true ]; then
+    echo -e "${YELLOW}[DRY-RUN]${NC} npm version $BUMP_VERSION --no-git-tag-version"
+  else
+    npm version $BUMP_VERSION --no-git-tag-version
+    NEW_VERSION=$(node -p "require('./package.json').version")
+    log_success "版本升级到: $NEW_VERSION"
     
-    if [ "$DRY_RUN" = true ]; then
-      CURRENT_VERSION=$(node -p "require('./package.json').version")
-      echo -e "${YELLOW}[DRY-RUN]${NC} 当前版本: $CURRENT_VERSION"
-      echo -e "${YELLOW}[DRY-RUN]${NC} npm version $BUMP_VERSION --no-git-tag-version"
-    else
-      run_cmd "npm version $BUMP_VERSION --no-git-tag-version"
-      NEW_VERSION=$(node -p "require('./package.json').version")
-      log_success "版本升级到: $NEW_VERSION"
-      
-      # 提交版本更改
-      cd "$REPO_ROOT"
-      run_cmd "git add packages/openagent/package.json"
-      run_cmd "git commit -m 'chore(openagent): bump version to $NEW_VERSION'"
-    fi
+    # 提交版本更改
+    cd "$REPO_ROOT"
+    git add packages/openagent/package.json
+    git commit -m "chore(openagent): bump version to $NEW_VERSION"
   fi
 }
 
