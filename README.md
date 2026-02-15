@@ -2,6 +2,18 @@
 
 A lightweight, extensible AI Agent framework with tool calling, streaming, and multi-provider support.
 
+## 30 Seconds Quick Start
+
+```typescript
+import { anthropic } from 'openagent-ai'
+
+const agent = anthropic('your-api-key')
+const result = await agent.chat('Hello!')
+console.log(result.text)
+```
+
+That's it! The agent can read/write files, execute commands, search code, and more.
+
 ## Features
 
 - **Simple API**: One-line initialization, easy `chat()` and `stream()` methods
@@ -15,31 +27,51 @@ A lightweight, extensible AI Agent framework with tool calling, streaming, and m
 
 ```bash
 npm install openagent-ai
-# or
-pnpm add openagent-ai
-# or
-yarn add openagent-ai
 ```
 
-## Quick Start
+## Usage Examples
+
+### Basic Chat
 
 ```typescript
 import { anthropic } from 'openagent-ai'
 
-// Create agent with one line
 const agent = anthropic(process.env.ANTHROPIC_API_KEY)
 
-// Non-streaming chat
+// Simple chat
 const result = await agent.chat('List files in current directory')
 console.log(result.text)
 console.log(result.toolCalls) // See what tools were used
+```
 
-// Streaming chat
+### Streaming
+
+```typescript
 for await (const event of agent.stream('Create a hello.txt file')) {
   if (event.type === 'text') process.stdout.write(event.text)
-  if (event.type === 'tool-start') console.log(`Using: ${event.name}`)
-  if (event.type === 'done') console.log(`Cost: $${event.result.cost}`)
+  if (event.type === 'tool-start') console.log(`\nUsing: ${event.name}`)
+  if (event.type === 'done') console.log(`\nCost: $${event.result.cost}`)
 }
+```
+
+### Use with OpenCode Config
+
+If you have an `opencode.json` config file, you can load it directly:
+
+```typescript
+import { OpenAgent, configureFromOpenCodeConfig } from 'openagent-ai'
+
+// Load your opencode.json configuration
+const config = require('./opencode.json')
+configureFromOpenCodeConfig(config)
+
+// Now use any configured provider
+const agent = new OpenAgent({
+  provider: 'anthropic',
+  model: 'claude-opus-4.5',
+})
+
+const result = await agent.chat('Hello!')
 ```
 
 ## Built-in Tools
@@ -55,20 +87,108 @@ for await (const event of agent.stream('Create a hello.txt file')) {
 | `webfetch` | Fetch web content |
 | `question` | Ask user for input |
 
-## Configuration
+## Provider Setup
 
-### Basic Configuration
+### Anthropic (Recommended)
+
+```typescript
+import { anthropic } from 'openagent-ai'
+
+// Direct API
+const agent = anthropic('sk-ant-xxx')
+
+// With proxy/custom endpoint
+const agent = new OpenAgent({
+  provider: 'anthropic',
+  apiKey: 'your-key',
+  baseURL: 'https://your-proxy.com/v1',  // optional
+  model: 'claude-opus-4.5',
+})
+```
+
+### OpenAI
+
+```typescript
+import { openai } from 'openagent-ai'
+const agent = openai('sk-xxx', 'gpt-4o')
+```
+
+### Google Gemini
+
+```typescript
+import { google } from 'openagent-ai'
+const agent = google('your-api-key', 'gemini-1.5-pro')
+```
+
+### OpenAI-Compatible APIs (Together, Groq, DeepSeek, etc.)
 
 ```typescript
 import { OpenAgent } from 'openagent-ai'
 
+// Together AI
 const agent = new OpenAgent({
-  provider: 'anthropic',           // or 'openai', 'google'
-  apiKey: process.env.API_KEY,
-  model: 'claude-sonnet-4-20250514',  // optional, has defaults
-  mode: 'build',                   // 'plan' for read-only, 'build' for full access
+  provider: 'openai',
+  apiKey: process.env.TOGETHER_API_KEY,
+  baseURL: 'https://api.together.xyz/v1',
+  model: 'meta-llama/Llama-3-70b-chat-hf',
+})
+
+// Groq
+const agent = new OpenAgent({
+  provider: 'openai',
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1',
+  model: 'llama-3.1-70b-versatile',
+})
+
+// DeepSeek
+const agent = new OpenAgent({
+  provider: 'openai',
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: 'https://api.deepseek.com/v1',
+  model: 'deepseek-chat',
+})
+
+// ZhipuAI (GLM)
+const agent = new OpenAgent({
+  provider: 'openai',
+  apiKey: process.env.ZHIPU_API_KEY,
+  baseURL: 'https://open.bigmodel.cn/api/paas/v4',
+  model: 'glm-4',
+})
+
+// Local Ollama
+const agent = new OpenAgent({
+  provider: 'openai',
+  apiKey: 'not-needed',
+  baseURL: 'http://localhost:11434/v1',
+  model: 'llama3',
+})
+```
+
+## Advanced Configuration
+
+### Full Options
+
+```typescript
+const agent = new OpenAgent({
+  // Provider settings
+  provider: 'anthropic',           // 'anthropic' | 'openai' | 'google'
+  apiKey: 'your-api-key',
+  baseURL: 'https://custom.api/v1', // optional proxy
+  model: 'claude-sonnet-4-20250514',
+  headers: { 'X-Custom': 'value' }, // optional headers
+  
+  // Behavior settings
+  mode: 'build',                   // 'plan' (read-only) | 'build' (full access)
   maxSteps: 10,                    // max tool execution rounds
-  temperature: 0.7,                // optional
+  temperature: 0.7,
+  maxOutputTokens: 4096,
+  workingDirectory: '/path/to/dir',
+  
+  // Custom tools
+  tools: [myCustomTool],
+  useBuiltinTools: true,           // default: true
 })
 ```
 
@@ -78,11 +198,11 @@ const agent = new OpenAgent({
 import { OpenAgent, defineTool } from 'openagent-ai'
 import { z } from 'zod'
 
-const myTool = defineTool({
+const calculator = defineTool({
   id: 'calculator',
-  description: 'Perform calculations',
+  description: 'Perform math calculations',
   parameters: z.object({
-    expression: z.string(),
+    expression: z.string().describe('Math expression like "2 + 2"'),
   }),
   execute: async (args) => ({
     title: 'Calculation',
@@ -92,163 +212,107 @@ const myTool = defineTool({
 
 const agent = new OpenAgent({
   provider: 'anthropic',
-  apiKey: process.env.API_KEY,
-  tools: [myTool],
+  apiKey: 'your-key',
+  tools: [calculator],
 })
 ```
 
-### Custom Agent Definition
+### Custom System Prompt
 
 ```typescript
 const agent = new OpenAgent({
   provider: 'anthropic',
-  apiKey: process.env.API_KEY,
+  apiKey: 'your-key',
   agent: {
     name: 'code-reviewer',
     systemPrompt: `You are an expert code reviewer.
-Focus on:
-- Code quality and best practices
-- Security vulnerabilities
-- Performance issues`,
-    allowedTools: ['read', 'grep', 'glob'],  // restrict tools
+Focus on: code quality, security, performance.`,
+    allowedTools: ['read', 'grep', 'glob'],  // optional: restrict tools
   },
 })
 ```
 
-### Session Continuation
+### Session Management
 
 ```typescript
-// First conversation
-const result1 = await agent.chat('Read the package.json file')
-const sessionId = result1.sessionId
+// Chat returns sessionId for continuation
+const result1 = await agent.chat('Read package.json')
+console.log(result1.sessionId)
 
-// Continue the conversation
-const result2 = await agent
-  .continueSession(sessionId)
-  .chat('What version is it?')
+// Continue same conversation
+const result2 = await agent.chat('What version?', { 
+  sessionId: result1.sessionId 
+})
 
-// Start fresh
+// Or use fluent API
 const result3 = await agent
-  .newSession()
-  .chat('Hello!')
-```
+  .continueSession(result1.sessionId)
+  .chat('Summarize it')
 
-## Provider Options
-
-### Anthropic (Default)
-
-```typescript
-import { anthropic } from 'openagent-ai'
-const agent = anthropic(apiKey, 'claude-sonnet-4-20250514')
-```
-
-### OpenAI
-
-```typescript
-import { openai } from 'openagent-ai'
-const agent = openai(apiKey, 'gpt-4o')
-```
-
-### Google
-
-```typescript
-import { google } from 'openagent-ai'
-const agent = google(apiKey, 'gemini-1.5-pro')
-```
-
-### OpenAI-Compatible APIs
-
-Works with any OpenAI-compatible API by setting `baseURL`:
-
-```typescript
-const agent = new OpenAgent({
-  provider: 'openai',
-  apiKey: process.env.API_KEY,
-  baseURL: 'https://api.together.xyz/v1',
-  model: 'meta-llama/Llama-3-70b-chat-hf',
-})
-```
-
-**Popular Providers:**
-
-| Provider | Base URL | Example Model |
-|----------|----------|---------------|
-| Together | `https://api.together.xyz/v1` | `meta-llama/Llama-3-70b-chat-hf` |
-| Groq | `https://api.groq.com/openai/v1` | `llama-3.1-70b-versatile` |
-| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
-| OpenRouter | `https://openrouter.ai/api/v1` | `anthropic/claude-3.5-sonnet` |
-| Ollama | `http://localhost:11434/v1` | `llama3` |
-
-**With Custom Headers:**
-
-```typescript
-const agent = new OpenAgent({
-  provider: 'openai',
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1',
-  model: 'anthropic/claude-3.5-sonnet',
-  headers: {
-    'HTTP-Referer': 'https://your-site.com',
-    'X-Title': 'Your App Name',
-  },
-})
+// Start fresh session
+const result4 = await agent.newSession().chat('New topic')
 ```
 
 ## Agent Modes
 
-- **`build`** (default): Full access to all tools, can modify files
-- **`plan`**: Read-only mode, cannot modify files or execute destructive commands
+- **`build`** (default): Full access - can read, write, execute
+- **`plan`**: Read-only - can only read files and search
 
 ```typescript
-const agent = new OpenAgent({
-  mode: 'plan',  // Start in read-only mode
-})
+// Start in plan mode
+const agent = new OpenAgent({ mode: 'plan' })
 
-// Switch modes
+// Switch to build mode when ready
 agent.setMode('build')
 ```
 
-## Low-Level API
-
-For advanced use cases, you can access the low-level API:
-
-```typescript
-import {
-  initOpenAgent,
-  createSession,
-  llmStream,
-  registerTool,
-  // ... more exports
-} from 'openagent-ai'
-```
-
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for details.
-
 ## Examples
 
-- [Simple Example](./examples/simple.ts) - Basic usage
-- [Advanced Example](./examples/advanced.ts) - Custom tools and configuration
-- [Custom Provider](./examples/custom-provider.ts) - OpenAI-compatible APIs (Together, Groq, DeepSeek, etc.)
+See the [examples/](./examples/) directory:
 
-Run examples:
 ```bash
-# Anthropic
-ANTHROPIC_API_KEY=your-key npx tsx examples/simple.ts
+# Basic usage
+npx tsx examples/simple.ts
 
-# Together AI
-TOGETHER_API_KEY=your-key npx tsx examples/custom-provider.ts together
+# Custom tools
+npx tsx examples/advanced.ts
 
-# Groq
-GROQ_API_KEY=your-key npx tsx examples/custom-provider.ts groq
+# Test different providers
+npx tsx examples/test-providers.ts
+npx tsx examples/test-providers.ts anthropic --tools
+```
 
-# DeepSeek
-DEEPSEEK_API_KEY=your-key npx tsx examples/custom-provider.ts deepseek
+## API Reference
+
+### ChatResult
+
+```typescript
+interface ChatResult {
+  text: string           // Final response text
+  toolCalls: ToolCall[]  // Tools that were called
+  usage: TokenUsage      // { input, output }
+  cost: number           // Estimated cost in USD
+  finishReason: string   // 'stop', 'tool_use', etc.
+  sessionId: string      // For continuing conversation
+}
+```
+
+### StreamEvent
+
+```typescript
+type StreamEvent =
+  | { type: 'text'; text: string }
+  | { type: 'tool-start'; name: string; input: object }
+  | { type: 'tool-end'; name: string; output: string }
+  | { type: 'done'; result: ChatResult }
+  | { type: 'error'; error: Error }
 ```
 
 ## Documentation
 
-- [Architecture](./ARCHITECTURE.md) - System design and components
-- [Roadmap](./ROADMAP.md) - Future plans and features
+- [Architecture](./ARCHITECTURE.md) - System design
+- [Roadmap](./ROADMAP.md) - Future plans
+- [Contributing](./CONTRIBUTING.md) - How to contribute
 
 ## License
 
