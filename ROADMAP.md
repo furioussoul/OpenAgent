@@ -12,12 +12,20 @@ OpenAgent is currently in alpha stage. Core functionality is implemented but not
 - ✅ High-level API (`OpenAgent` class)
 - ✅ `chat()` method with Agent Loop
 - ✅ `stream()` method for streaming responses
-- ✅ Built-in tools (read, write, edit, bash, glob, grep, webfetch, question)
+- ✅ Built-in tools (12 tools):
+  - File operations: read, write, edit
+  - Search: glob, grep
+  - Execution: bash
+  - Web: webfetch
+  - Interaction: question
+  - Agent management: task, todowrite, todoread, skill
 - ✅ Smart edit with fuzzy matching (ported from OpenCode)
 - ✅ Pluggable SessionStore with MemoryStore default
 - ✅ Multi-provider support (Anthropic, OpenAI, Google)
 - ✅ Custom tool definition API
 - ✅ Agent mode (plan/build)
+- ✅ Sub-agents via task tool
+- ✅ Skills system for domain expertise
 
 ## Roadmap
 
@@ -81,7 +89,7 @@ OpenAgent is currently in alpha stage. Core functionality is implemented but not
 **Goals:**
 - [ ] Context management (token pruning, compaction)
 - [ ] Persistent sessions (SQLite store)
-- [ ] Sub-agents (task tool)
+- [x] ~~Sub-agents (task tool)~~ ✅ Implemented in v0.1.0
 - [ ] Permissions system
 
 **Tasks:**
@@ -94,11 +102,6 @@ OpenAgent is currently in alpha stage. Core functionality is implemented but not
    - Optional dependency
    - File-based persistence
    - Migration support
-   
-3. **Sub-Agents**
-   - Task tool for spawning sub-agents
-   - Parallel execution
-   - Result aggregation
 
 ### v0.5.0 - Production Ready
 

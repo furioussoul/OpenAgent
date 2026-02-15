@@ -30,12 +30,11 @@ OpenAgent is a **TypeScript SDK** for building AI agents with tool-calling capab
 │   Provider    │       │    Tool       │       │   Session     │
 │   Registry    │       │   Registry    │       │    Store      │
 │               │       │               │       │               │
-│ • Anthropic   │       │ • read        │       │ • Memory      │
-│ • OpenAI      │       │ • write       │       │ • (Pluggable) │
-│ • Google      │       │ • edit        │       │               │
-│ • Custom      │       │ • bash        │       │               │
-└───────┬───────┘       │ • glob/grep   │       └───────┬───────┘
-        │               │ • webfetch    │               │
+│ • Anthropic   │       │ • read/write  │       │ • Memory      │
+│ • OpenAI      │       │ • edit/bash   │       │ • (Pluggable) │
+│ • Google      │       │ • glob/grep   │       │               │
+│ • Custom      │       │ • task/skill  │       │               │
+└───────┬───────┘       │ • todowrite   │       └───────┬───────┘
         │               │ • Custom      │               │
         │               └───────┬───────┘               │
         │                       │                       │
@@ -115,6 +114,10 @@ registerTool(myTool)
 | `grep` | Search file contents |
 | `webfetch` | Fetch web content |
 | `question` | Ask user for input |
+| `task` | Launch sub-agents for complex tasks |
+| `todowrite` | Task management and progress tracking |
+| `todoread` | Read current task list (read-only) |
+| `skill` | Load specialized domain knowledge |
 
 ### 4. Session Store (`src/core/session-store.ts`)
 
