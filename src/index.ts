@@ -9,7 +9,7 @@
  * 
  * @example Simple Usage (Recommended)
  * ```typescript
- * import { OpenAgent, anthropic } from 'openagent-ai'
+ * import { OpenAgent, anthropic } from 'mycto_agent'
  * 
  * // Quick start with factory function
  * const agent = anthropic(process.env.ANTHROPIC_API_KEY)
@@ -28,7 +28,7 @@
  * 
  * @example Advanced Usage
  * ```typescript
- * import { OpenAgent, defineTool } from 'openagent-ai'
+ * import { OpenAgent, defineTool } from 'mycto_agent'
  * 
  * const agent = new OpenAgent({
  *   provider: 'anthropic',

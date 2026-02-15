@@ -1,4 +1,4 @@
-import { anthropic } from 'openagent-ai'
+import { anthropic } from 'mycto_agent'
 
 const agent = anthropic('你的API Key')
 
