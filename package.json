@@ -1,0 +1,78 @@
+{
+  "name": "openagent-ai",
+  "version": "0.1.0",
+  "description": "A lightweight, extensible AI Agent framework with tool calling, MCP integration, and streaming support",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "llm",
+    "openai",
+    "anthropic",
+    "claude",
+    "gpt",
+    "mcp",
+    "tool-calling",
+    "streaming"
+  ],
+  "author": "furioussoul",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/furioussoul/OpenAgent.git"
+  },
+  "homepage": "https://github.com/furioussoul/OpenAgent#readme",
+  "bugs": {
+    "url": "https://github.com/furioussoul/OpenAgent/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.41",
+    "@ai-sdk/google": "^3.0.24",
+    "@ai-sdk/openai": "^3.0.26",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "ai": "^6.0.81",
+    "glob": "^11.0.0",
+    "js-tiktoken": "^1.0.21",
+    "nanoid": "^5.1.6",
+    "zod": "^4.3.6",
+    "zod-to-json-schema": "^3.25.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.11",
+    "tsup": "^8.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  }
+}
