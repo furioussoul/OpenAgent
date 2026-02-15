@@ -68,7 +68,7 @@ const log = createLogger('OpenAgent')
 // ============================================================================
 
 /** Provider 类型 */
-export type ProviderType = 'anthropic' | 'openai' | 'google'
+export type ProviderType = 'anthropic' | 'openai' | 'google' | 'zhipu' | 'kimi'
 
 /** OpenAgent 配置选项 */
 export interface OpenAgentOptions {
@@ -167,14 +167,24 @@ const DEFAULT_MODELS: Record<ProviderType, { id: string; contextWindow: number; 
     maxOutput: 8192 
   },
   openai: { 
-    id: 'gpt-4o', 
+    id: 'gpt-5-mini', 
     contextWindow: 128000, 
     maxOutput: 4096 
   },
   google: { 
-    id: 'gemini-1.5-pro', 
+    id: 'gemini-3-flash-preview', 
     contextWindow: 1000000, 
     maxOutput: 8192 
+  },
+  zhipu: {
+    id: 'glm-4.7',
+    contextWindow: 128000,
+    maxOutput: 8192
+  },
+  kimi: {
+    id: 'kimi-k2.5-free',
+    contextWindow: 128000,
+    maxOutput: 8192
   },
 }
 
@@ -363,7 +373,7 @@ You can read, write, and edit files, search code, and execute commands.`,
   }
 
   /**
-   * 非流式对话（带 Agent Loop）
+   * 非流式对话（AI SDK 自动多步）
    */
   async chat(message: string, options?: { sessionId?: string }): Promise<ChatResult> {
     await this.ensureInitialized()
@@ -383,119 +393,71 @@ You can read, write, and edit files, search code, and execute commands.`,
     const ctx = this.createToolContext(sessionId, msgId)
     const tools = getAIToolsForAgent(this.agent, ctx, this.mode)
     
-    // Agent Loop
+    // 获取消息历史
+    const messages = await getSessionMessages(sessionId)
+    const modelMessages = await toModelMessages(messages)
+    
+    // 调用 LLM（AI SDK 自动处理多步工具调用）
+    const result = await llmStream({
+      providerId: this.providerId,
+      modelId: this.modelId,
+      messages: modelMessages,
+      system: buildSystemPrompt(this.agent),
+      tools,
+      temperature: this.temperature,
+      maxOutputTokens: this.maxOutputTokens,
+      maxSteps: this.maxSteps, // AI SDK 自动处理多步
+    })
+    
+    // 收集响应
     let fullText = ''
     const toolCalls: ToolCallRecord[] = []
     let totalUsage: TokenUsage = { input: 0, output: 0 }
     let totalCost = 0
     let finishReason = 'unknown'
-    let step = 0
+    const assistantParts: CreatePartInput[] = []
     
-    while (step < this.maxSteps) {
-      step++
-      log.debug(`Agent loop step ${step}/${this.maxSteps}`)
-      
-      // 获取消息历史
-      const messages = await getSessionMessages(sessionId)
-      const modelMessages = await toModelMessages(messages)
-      
-      // 调用 LLM
-      const result = await llmStream({
-        providerId: this.providerId,
-        modelId: this.modelId,
-        messages: modelMessages,
-        system: buildSystemPrompt(this.agent),
-        tools,
-        temperature: this.temperature,
-        maxOutputTokens: this.maxOutputTokens,
-        maxSteps: 1, // 每次只执行一步，由我们控制循环
-      })
-      
-      // 收集响应
-      let stepText = ''
-      const stepToolCalls: Array<{ 
-        id: string
-        name: string
-        args: Record<string, unknown>
-        output?: string
-        status: ToolStatus
-      }> = []
-      
-      for await (const event of result.fullStream) {
-        switch (event.type) {
-          case 'text-delta':
-            stepText += event.text
-            break
-          case 'tool-call':
-            stepToolCalls.push({
-              id: event.toolCallId,
-              name: event.toolName,
-              args: event.args,
-              status: 'PENDING',
-            })
-            break
-          case 'finish':
-            finishReason = event.finishReason
-            totalUsage.input += event.usage.tokens.input
-            totalUsage.output += event.usage.tokens.output
-            totalCost += event.usage.cost
-            break
-        }
-      }
-      
-      // 如果有文本输出，累积
-      if (stepText) {
-        fullText += (fullText && stepText ? '\n' : '') + stepText
-      }
-      
-      // 如果没有工具调用，结束循环
-      if (stepToolCalls.length === 0) {
-        // 保存 assistant 消息
-        if (stepText) {
-          await batchSaveMessage({
-            sessionId,
-            role: 'ASSISTANT',
-            parts: [{ type: 'TEXT', text: stepText }],
+    for await (const event of result.fullStream) {
+      switch (event.type) {
+        case 'text-delta':
+          fullText += event.text
+          break
+        case 'tool-call':
+          // AI SDK 会自动执行工具，这里只记录调用
+          log.debug(`Tool call: ${event.toolName}`, { args: event.args })
+          break
+        case 'tool-result':
+          // 工具执行完成，记录结果
+          toolCalls.push({
+            name: event.toolName,
+            input: event.args,
+            output: String(event.result),
+            status: 'COMPLETED',
           })
-        }
-        break
+          assistantParts.push({
+            type: 'TOOL',
+            toolName: event.toolName,
+            toolCallId: event.toolCallId,
+            toolInput: event.args,
+            toolOutput: String(event.result),
+            toolStatus: 'COMPLETED',
+          })
+          break
+        case 'finish':
+          finishReason = event.finishReason
+          totalUsage.input += event.usage.tokens.input
+          totalUsage.output += event.usage.tokens.output
+          totalCost += event.usage.cost
+          break
       }
-      
-      // 执行工具调用
-      const assistantParts: CreatePartInput[] = []
-      
-      if (stepText) {
-        assistantParts.push({ type: 'TEXT', text: stepText })
-      }
-      
-      for (const call of stepToolCalls) {
-        log.debug(`Executing tool: ${call.name}`, { args: call.args })
-        
-        // 执行工具
-        const result = await this.executeTool(call.name, call.args, ctx)
-        call.output = result.output
-        call.status = 'COMPLETED'
-        
-        // 添加到工具调用记录
-        toolCalls.push({
-          name: call.name,
-          input: call.args,
-          output: result.output,
-          status: 'COMPLETED',
-        })
-        
-        // 添加到消息 parts
-        assistantParts.push({
-          type: 'TOOL',
-          toolName: call.name,
-          toolCallId: call.id,
-          toolInput: call.args,
-          toolOutput: result.output,
-          toolStatus: 'COMPLETED',
-        })
-      }
-      
-      // 保存 assistant 消息（包含工具调用）
+    }
+    
+    // 保存 assistant 消息
+    if (fullText) {
+      assistantParts.unshift({ type: 'TEXT', text: fullText })
+    }
+    
+    if (assistantParts.length > 0) {
       await batchSaveMessage({
         sessionId,
         role: 'ASSISTANT',
@@ -514,7 +476,7 @@ You can read, write, and edit files, search code, and execute commands.`,
   }
 
   /**
-   * 流式对话
+   * 流式对话（AI SDK 自动多步）
    */
   async *stream(message: string, options?: { sessionId?: string }): AsyncGenerator<AgentStreamEvent> {
     await this.ensureInitialized()
@@ -534,129 +496,88 @@ You can read, write, and edit files, search code, and execute commands.`,
     const ctx = this.createToolContext(sessionId, msgId)
     const tools = getAIToolsForAgent(this.agent, ctx, this.mode)
     
-    // Agent Loop
+    // 获取消息历史
+    const messages = await getSessionMessages(sessionId)
+    const modelMessages = await toModelMessages(messages)
+    
+    // 收集响应
     let fullText = ''
     const toolCalls: ToolCallRecord[] = []
     let totalUsage: TokenUsage = { input: 0, output: 0 }
     let totalCost = 0
     let finishReason = 'unknown'
-    let step = 0
+    const assistantParts: CreatePartInput[] = []
     
     try {
-      while (step < this.maxSteps) {
-        step++
-        
-        // 获取消息历史
-        const messages = await getSessionMessages(sessionId)
-        const modelMessages = await toModelMessages(messages)
-        
-        // 调用 LLM
-        const result = await llmStream({
-          providerId: this.providerId,
-          modelId: this.modelId,
-          messages: modelMessages,
-          system: buildSystemPrompt(this.agent),
-          tools,
-          temperature: this.temperature,
-          maxOutputTokens: this.maxOutputTokens,
-          maxSteps: 1,
-        })
-        
-        // 收集响应
-        let stepText = ''
-        const stepToolCalls: Array<{ 
-          id: string
-          name: string
-          args: Record<string, unknown>
-          output?: string
-          status: ToolStatus
-        }> = []
-        
-        for await (const event of result.fullStream) {
-          switch (event.type) {
-            case 'text-delta':
-              stepText += event.text
-              yield { type: 'text', text: event.text }
-              break
-            case 'reasoning-delta':
-              yield { type: 'reasoning', text: event.text }
-              break
-            case 'tool-call':
-              stepToolCalls.push({
-                id: event.toolCallId,
-                name: event.toolName,
-                args: event.args,
-                status: 'PENDING',
-              })
-              yield { 
-                type: 'tool-start', 
-                name: event.toolName, 
-                input: event.args,
-              }
-              break
-            case 'finish':
-              finishReason = event.finishReason
-              totalUsage.input += event.usage.tokens.input
-              totalUsage.output += event.usage.tokens.output
-              totalCost += event.usage.cost
-              break
-            case 'error':
-              yield { type: 'error', error: event.error }
-              return
-          }
-        }
-        
-        if (stepText) {
-          fullText += (fullText && stepText ? '\n' : '') + stepText
-        }
-        
-        // 如果没有工具调用，结束循环
-        if (stepToolCalls.length === 0) {
-          if (stepText) {
-            await batchSaveMessage({
-              sessionId,
-              role: 'ASSISTANT',
-              parts: [{ type: 'TEXT', text: stepText }],
+      // 调用 LLM（AI SDK 自动处理多步工具调用）
+      const result = await llmStream({
+        providerId: this.providerId,
+        modelId: this.modelId,
+        messages: modelMessages,
+        system: buildSystemPrompt(this.agent),
+        tools,
+        temperature: this.temperature,
+        maxOutputTokens: this.maxOutputTokens,
+        maxSteps: this.maxSteps, // AI SDK 自动处理多步
+      })
+      
+      for await (const event of result.fullStream) {
+        switch (event.type) {
+          case 'text-delta':
+            fullText += event.text
+            yield { type: 'text', text: event.text }
+            break
+          case 'reasoning-delta':
+            yield { type: 'reasoning', text: event.text }
+            break
+          case 'tool-call':
+            // AI SDK 会自动执行工具
+            yield { 
+              type: 'tool-start', 
+              name: event.toolName, 
+              input: event.args,
+            }
+            break
+          case 'tool-result':
+            // 工具执行完成
+            toolCalls.push({
+              name: event.toolName,
+              input: event.args,
+              output: String(event.result),
+              status: 'COMPLETED',
             })
-          }
-          break
+            assistantParts.push({
+              type: 'TOOL',
+              toolName: event.toolName,
+              toolCallId: event.toolCallId,
+              toolInput: event.args,
+              toolOutput: String(event.result),
+              toolStatus: 'COMPLETED',
+            })
+            yield { 
+              type: 'tool-end', 
+              name: event.toolName, 
+              output: String(event.result),
+            }
+            break
+          case 'finish':
+            finishReason = event.finishReason
+            totalUsage.input += event.usage.tokens.input
+            totalUsage.output += event.usage.tokens.output
+            totalCost += event.usage.cost
+            break
+          case 'error':
+            yield { type: 'error', error: event.error }
+            return
         }
-        
-        // 执行工具调用
-        const assistantParts: CreatePartInput[] = []
-        
-        if (stepText) {
-          assistantParts.push({ type: 'TEXT', text: stepText })
-        }
-        
-        for (const call of stepToolCalls) {
-          const toolResult = await this.executeTool(call.name, call.args, ctx)
-          call.output = toolResult.output
-          call.status = 'COMPLETED'
-          
-          toolCalls.push({
-            name: call.name,
-            input: call.args,
-            output: toolResult.output,
-            status: 'COMPLETED',
-          })
-          
-          yield { 
-            type: 'tool-end', 
-            name: call.name, 
-            output: toolResult.output,
-          }
-          
-          assistantParts.push({
-            type: 'TOOL',
-            toolName: call.name,
-            toolCallId: call.id,
-            toolInput: call.args,
-            toolOutput: toolResult.output,
-            toolStatus: 'COMPLETED',
-          })
-        }
-        
+      }
+      
+      // 保存 assistant 消息
+      if (fullText) {
+        assistantParts.unshift({ type: 'TEXT', text: fullText })
+      }
+      
+      if (assistantParts.length > 0) {
         await batchSaveMessage({
           sessionId,
           role: 'ASSISTANT',
@@ -757,6 +678,28 @@ export function google(apiKey: string, model?: string): OpenAgent {
   return new OpenAgent({
     provider: 'google',
     apiKey,
-    model: model ?? 'gemini-1.5-pro',
+    model: model ?? 'gemini-3-flash-preview',
+  })
+}
+
+/**
+ * 快速创建 Zhipu/GLM Agent
+ */
+export function zhipu(apiKey: string, model?: string): OpenAgent {
+  return new OpenAgent({
+    provider: 'zhipu',
+    apiKey,
+    model: model ?? 'glm-4.7',
+  })
+}
+
+/**
+ * 快速创建 Kimi Agent
+ */
+export function kimi(apiKey: string, model?: string): OpenAgent {
+  return new OpenAgent({
+    provider: 'kimi',
+    apiKey,
+    model: model ?? 'kimi-k2.5-free',
   })
 }

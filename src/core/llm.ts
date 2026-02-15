@@ -54,8 +54,8 @@ export interface LLMUsage {
 export type LLMStreamEvent =
   | { type: 'text-delta'; text: string }
   | { type: 'reasoning-delta'; text: string }
-  | { type: 'tool-call'; toolCallId: string; toolName: string; args: Record<string, unknown> }
-  | { type: 'tool-result'; toolCallId: string; result: unknown }
+  | { type: 'tool-call'; toolCallId: string; toolName: string; args: Record<string, unknown>; providerMetadata?: Record<string, unknown> }
+  | { type: 'tool-result'; toolCallId: string; toolName: string; args: Record<string, unknown>; result: unknown }
   | { type: 'finish'; finishReason: string; usage: LLMUsage }
   | { type: 'error'; error: Error }
 
@@ -161,6 +161,8 @@ export async function toModelMessages(messages: MessageWithParts[]): Promise<Mod
               toolCallId: part.toolCallId,
               input: part.toolInput || {},
               output,
+              // 传回 providerMetadata (包含 Gemini 3 的 thoughtSignature)
+              providerMetadata: part.toolMeta,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any)
           } else if (part.toolStatus === 'ERROR') {
@@ -170,6 +172,7 @@ export async function toModelMessages(messages: MessageWithParts[]): Promise<Mod
               toolCallId: part.toolCallId,
               input: part.toolInput || {},
               errorText: part.toolOutput || 'Tool execution failed',
+              providerMetadata: part.toolMeta,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any)
           } else {
@@ -179,6 +182,7 @@ export async function toModelMessages(messages: MessageWithParts[]): Promise<Mod
               toolCallId: part.toolCallId,
               input: part.toolInput || {},
               errorText: '[Tool execution was interrupted]',
+              providerMetadata: part.toolMeta,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any)
           }
@@ -305,6 +309,7 @@ export async function stream(input: LLMStreamInput): Promise<LLMStreamResult> {
               toolCallId: e.toolCallId,
               toolName: e.toolName,
               args: (e.args ?? e.input ?? {}) as Record<string, unknown>,
+              providerMetadata: e.providerMetadata as Record<string, unknown> | undefined,
             }
             break
 
@@ -312,6 +317,8 @@ export async function stream(input: LLMStreamInput): Promise<LLMStreamResult> {
             yield {
               type: 'tool-result',
               toolCallId: e.toolCallId,
+              toolName: e.toolName,
+              args: (e.args ?? e.input ?? {}) as Record<string, unknown>,
               result: e.result ?? e.output,
             }
             break

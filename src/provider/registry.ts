@@ -8,6 +8,7 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import type { LanguageModel } from 'ai'
 import type { ModelInfo, ProviderInfo } from '../types'
 import { ModelNotFoundError } from '../utils/error'
@@ -33,8 +34,10 @@ export interface ProviderConfig {
    * - anthropic: 使用 @ai-sdk/anthropic
    * - openai: 使用 @ai-sdk/openai (兼容 OpenAI API 的服务)
    * - google: 使用 @ai-sdk/google
+   * - zhipu: 使用 @ai-sdk/openai (智谱 GLM，OpenAI 兼容)
+   * - kimi: 使用 @ai-sdk/openai-compatible (Moonshot Kimi)
    */
-  type: 'anthropic' | 'openai' | 'google'
+  type: 'anthropic' | 'openai' | 'google' | 'zhipu' | 'kimi'
   options: ProviderOptions
   models: ModelInfo[]
 }
@@ -47,7 +50,7 @@ export interface ProviderConfig {
 let providers: Record<string, ProviderConfig> = { }
 
 /** 缓存的 Provider 实例 */
-const providerInstances: Map<string, ReturnType<typeof createAnthropic> | ReturnType<typeof createOpenAI> | ReturnType<typeof createGoogleGenerativeAI>> = new Map()
+const providerInstances: Map<string, ReturnType<typeof createAnthropic> | ReturnType<typeof createOpenAI> | ReturnType<typeof createGoogleGenerativeAI> | ReturnType<typeof createOpenAICompatible>> = new Map()
 
 // ============================================================================
 // Configuration
@@ -94,13 +97,17 @@ export function configureFromOpenCodeConfig(config: {
 }): void {
   for (const [providerId, providerConfig] of Object.entries(config.provider)) {
     // 确定 provider 类型
-    let type: 'anthropic' | 'openai' | 'google' = 'openai'
+    let type: 'anthropic' | 'openai' | 'google' | 'zhipu' | 'kimi' = 'openai'
     if (providerId === 'anthropic' || providerId.includes('anthropic')) {
       type = 'anthropic'
     } else if (providerId === 'google' || providerId.includes('google') || providerId.includes('gemini')) {
       type = 'google'
+    } else if (providerId === 'zhipu' || providerId === 'zhipuai' || providerId.includes('glm')) {
+      type = 'zhipu'
+    } else if (providerId === 'kimi' || providerId === 'moonshot' || providerId.includes('kimi')) {
+      type = 'kimi'
     }
-    // zhipuai 使用 OpenAI 兼容 API
+    // 其他使用 OpenAI 兼容 API
     
     const models: ModelInfo[] = Object.entries(providerConfig.models).map(([modelId, model]) => ({
       id: model.id || modelId,
@@ -205,6 +212,32 @@ function getOrCreateProviderInstance(providerId: string) {
       break
     }
     
+    case 'zhipu': {
+      // Zhipu/GLM 使用 OpenAI 兼容 API
+      const options: Parameters<typeof createOpenAI>[0] = {
+        baseURL: config.options.baseURL || 'https://open.bigmodel.cn/api/paas/v4',
+      }
+      if (config.options.apiKey) {
+        options.apiKey = config.options.apiKey
+      }
+      if (config.options.headers) {
+        options.headers = config.options.headers
+      }
+      instance = createOpenAI(options)
+      break
+    }
+    
+    case 'kimi': {
+      // Kimi 使用 @ai-sdk/openai-compatible
+      instance = createOpenAICompatible({
+        name: 'kimi',
+        baseURL: config.options.baseURL || 'https://opencode.ai/zen/v1',
+        apiKey: config.options.apiKey,
+        headers: config.options.headers,
+      })
+      break
+    }
+    
     default:
       throw new Error(`Unknown provider type: ${config.type}`)
   }
@@ -288,9 +321,14 @@ export function getLanguageModel(providerId: string, modelId: string): LanguageM
   
   const instance = getOrCreateProviderInstance(providerId)
   
-  // zhipuai 不支持 OpenAI 新的 Responses API，需要使用 .chat()
-  if (config.type === 'openai' && providerId === 'zhipuai') {
+  // zhipu 不支持 OpenAI 新的 Responses API，需要使用 .chat()
+  if (config.type === 'zhipu') {
     return (instance as ReturnType<typeof createOpenAI>).chat(modelId)
+  }
+  
+  // kimi 使用 openai-compatible，直接调用 chatModel
+  if (config.type === 'kimi') {
+    return (instance as ReturnType<typeof createOpenAICompatible>).chatModel(modelId)
   }
   
   // 其他 provider 直接调用

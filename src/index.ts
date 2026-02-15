@@ -52,6 +52,8 @@ export {
   anthropic,
   openai,
   google,
+  zhipu,
+  kimi,
   type OpenAgentOptions,
   type ChatResult,
   type ToolCallRecord,
