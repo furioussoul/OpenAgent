@@ -158,12 +158,39 @@ const agent = google(apiKey, 'gemini-1.5-pro')
 
 ### OpenAI-Compatible APIs
 
+Works with any OpenAI-compatible API by setting `baseURL`:
+
 ```typescript
 const agent = new OpenAgent({
   provider: 'openai',
   apiKey: process.env.API_KEY,
   baseURL: 'https://api.together.xyz/v1',
   model: 'meta-llama/Llama-3-70b-chat-hf',
+})
+```
+
+**Popular Providers:**
+
+| Provider | Base URL | Example Model |
+|----------|----------|---------------|
+| Together | `https://api.together.xyz/v1` | `meta-llama/Llama-3-70b-chat-hf` |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.1-70b-versatile` |
+| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
+| OpenRouter | `https://openrouter.ai/api/v1` | `anthropic/claude-3.5-sonnet` |
+| Ollama | `http://localhost:11434/v1` | `llama3` |
+
+**With Custom Headers:**
+
+```typescript
+const agent = new OpenAgent({
+  provider: 'openai',
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+  model: 'anthropic/claude-3.5-sonnet',
+  headers: {
+    'HTTP-Referer': 'https://your-site.com',
+    'X-Title': 'Your App Name',
+  },
 })
 ```
 
@@ -201,10 +228,21 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for details.
 
 - [Simple Example](./examples/simple.ts) - Basic usage
 - [Advanced Example](./examples/advanced.ts) - Custom tools and configuration
+- [Custom Provider](./examples/custom-provider.ts) - OpenAI-compatible APIs (Together, Groq, DeepSeek, etc.)
 
 Run examples:
 ```bash
+# Anthropic
 ANTHROPIC_API_KEY=your-key npx tsx examples/simple.ts
+
+# Together AI
+TOGETHER_API_KEY=your-key npx tsx examples/custom-provider.ts together
+
+# Groq
+GROQ_API_KEY=your-key npx tsx examples/custom-provider.ts groq
+
+# DeepSeek
+DEEPSEEK_API_KEY=your-key npx tsx examples/custom-provider.ts deepseek
 ```
 
 ## Documentation
