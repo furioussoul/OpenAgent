@@ -19,6 +19,13 @@ export { bashTool } from './bash'
 export { webfetchTool } from './webfetch'
 export { questionTool } from './question'
 
+// Agent 和任务管理工具
+export { taskTool } from './task'
+export { todowriteTool, todoreadTool, getTodos, setTodos, clearTodos } from './todowrite'
+export type { TodoItem, TodoStatus, TodoPriority } from './todowrite'
+export { skillTool, registerSkill, getAvailableSkills } from './skill'
+export type { SkillDefinition } from './skill'
+
 // Imports for builtinTools array
 import { readTool } from './read'
 import { writeTool } from './write'
@@ -28,6 +35,9 @@ import { grepTool } from './grep'
 import { bashTool } from './bash'
 import { webfetchTool } from './webfetch'
 import { questionTool } from './question'
+import { taskTool } from './task'
+import { todowriteTool, todoreadTool } from './todowrite'
+import { skillTool } from './skill'
 
 import type { ToolDefinition } from '../../types'
 
@@ -50,6 +60,12 @@ export const builtinTools: ToolDefinition[] = [
   // 交互和辅助工具
   webfetchTool,
   questionTool,
+  
+  // Agent 和任务管理工具
+  taskTool,
+  todowriteTool,
+  todoreadTool,
+  skillTool,
 ]
 
 /**

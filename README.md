@@ -86,6 +86,9 @@ const result = await agent.chat('Hello!')
 | `grep` | Search file contents with regex |
 | `webfetch` | Fetch web content |
 | `question` | Ask user for input |
+| `task` | Launch sub-agents for complex tasks |
+| `todowrite` | Manage task lists and track progress |
+| `skill` | Load specialized skills (git-expert, code-review, etc.) |
 
 ## Provider Setup
 
@@ -251,6 +254,68 @@ const result3 = await agent
 
 // Start fresh session
 const result4 = await agent.newSession().chat('New topic')
+```
+
+### Sub-Agents with Task Tool
+
+The `task` tool allows agents to spawn sub-agents for complex operations:
+
+```typescript
+// The agent can use the task tool to delegate complex work
+const result = await agent.chat(`
+  I need you to:
+  1. Find all TypeScript files with TODO comments
+  2. Create a summary report
+  
+  Use the task tool to explore the codebase efficiently.
+`)
+
+// Available sub-agent types:
+// - general: Multi-step tasks and research
+// - explore: Fast codebase exploration
+```
+
+### Skills System
+
+Load specialized knowledge on-demand:
+
+```typescript
+import { registerSkill, getAvailableSkills } from 'openagent-ai'
+
+// Built-in skills: git-expert, code-review, typescript-expert, testing
+
+// Agent can load skills during conversation
+const result = await agent.chat('Load the git-expert skill and help me resolve merge conflicts')
+
+// Register custom skills
+registerSkill({
+  name: 'my-skill',
+  description: 'Custom domain knowledge',
+  content: `# My Skill\n\nGuidelines for...`,
+})
+
+// List available skills
+console.log(getAvailableSkills())
+```
+
+### Task Management
+
+Track complex tasks with the todowrite tool:
+
+```typescript
+import { getTodos, setTodos, clearTodos } from 'openagent-ai'
+
+// The agent automatically uses todowrite for complex tasks
+const result = await agent.chat(`
+  Implement user authentication:
+  1. Create login endpoint
+  2. Add session management
+  3. Write tests
+`)
+
+// Programmatically access todos
+const todos = getTodos(result.sessionId)
+console.log(todos) // [{ id, content, status, priority }, ...]
 ```
 
 ## Agent Modes

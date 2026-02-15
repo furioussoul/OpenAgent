@@ -31,8 +31,25 @@ export {
   bashTool,
   webfetchTool,
   questionTool,
+  taskTool,
+  todowriteTool,
+  todoreadTool,
+  skillTool,
   builtinTools,
   getBuiltinTools,
+  
+  // Todo management
+  getTodos,
+  setTodos,
+  clearTodos,
+  type TodoItem,
+  type TodoStatus,
+  type TodoPriority,
+  
+  // Skill management
+  registerSkill,
+  getAvailableSkills,
+  type SkillDefinition,
 } from './builtin'
 
 // Local Executors
