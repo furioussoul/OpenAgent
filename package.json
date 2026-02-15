@@ -1,6 +1,6 @@
 {
   "name": "mycto_agent",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "A lightweight, extensible AI Agent framework with tool calling, MCP integration, and streaming support",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -53,6 +53,7 @@
     "@ai-sdk/anthropic": "^3.0.41",
     "@ai-sdk/google": "^3.0.24",
     "@ai-sdk/openai": "^3.0.26",
+    "@ai-sdk/openai-compatible": "^2.0.30",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "ai": "^6.0.81",
     "glob": "^11.0.0",
