@@ -25,12 +25,12 @@
 import type { Tool as _Tool } from 'ai'
 import type { 
   AgentDefinition, 
-  AgentMode as _AgentMode, 
+  AgentMode, 
   TokenUsage, 
   ToolContext,
   ToolResult,
   MessageWithParts as _MessageWithParts,
-  ToolStatus as _ToolStatus,
+  ToolStatus,
 } from './types'
 import { 
   setSessionStore, 
