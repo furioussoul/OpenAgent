@@ -14,8 +14,8 @@ import type {
   ReasoningPart,
   FilePart,
   TokenUsage,
-  ToolStatus,
-  AgentMode,
+  ToolStatus as _ToolStatus,
+  AgentMode as _AgentMode,
 } from '../types'
 
 import type {

@@ -22,20 +22,20 @@
  * ```
  */
 
-import type { Tool } from 'ai'
+import type { Tool as _Tool } from 'ai'
 import type { 
   AgentDefinition, 
-  AgentMode, 
+  AgentMode as _AgentMode, 
   TokenUsage, 
   ToolContext,
   ToolResult,
-  MessageWithParts,
-  ToolStatus,
+  MessageWithParts as _MessageWithParts,
+  ToolStatus as _ToolStatus,
 } from './types'
 import { 
   setSessionStore, 
   createMemoryStore, 
-  MemorySessionStore,
+  MemorySessionStore as _MemorySessionStore,
   createSession,
   getSession,
   getSessionMessages,
@@ -43,23 +43,23 @@ import {
   type SessionStore,
   type CreatePartInput,
 } from './core'
-import { getAgent, registerAgent } from './core/agent'
-import { stream as llmStream, toModelMessages, buildSystemPrompt, type LLMStreamEvent } from './core/llm'
+import { getAgent as _getAgent, registerAgent } from './core/agent'
+import { stream as llmStream, toModelMessages, buildSystemPrompt, type LLMStreamEvent as _LLMStreamEvent } from './core/llm'
 import { 
   registerTools, 
   builtinTools, 
   getAIToolsForAgent, 
   getTool,
-  defineTool,
+  defineTool as _defineTool,
 } from './tool'
 import type { ToolDefinition } from './types'
 import { 
-  configureProviders, 
+  configureProviders as _configureProviders, 
   configureProvider, 
-  getDefaultModel,
+  getDefaultModel as _getDefaultModel,
   type ProviderConfig 
 } from './provider'
-import { createLogger, partId, toolCallId } from './utils'
+import { createLogger, partId as _partId, toolCallId as _toolCallId } from './utils'
 
 const log = createLogger('OpenAgent')
 
@@ -412,7 +412,7 @@ You can read, write, and edit files, search code, and execute commands.`,
     // 收集响应
     let fullText = ''
     const toolCalls: ToolCallRecord[] = []
-    let totalUsage: TokenUsage = { input: 0, output: 0 }
+    const totalUsage: TokenUsage = { input: 0, output: 0 }
     let totalCost = 0
     let finishReason = 'unknown'
     const assistantParts: CreatePartInput[] = []
@@ -503,7 +503,7 @@ You can read, write, and edit files, search code, and execute commands.`,
     // 收集响应
     let fullText = ''
     const toolCalls: ToolCallRecord[] = []
-    let totalUsage: TokenUsage = { input: 0, output: 0 }
+    const totalUsage: TokenUsage = { input: 0, output: 0 }
     let totalCost = 0
     let finishReason = 'unknown'
     const assistantParts: CreatePartInput[] = []

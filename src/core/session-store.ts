@@ -11,7 +11,7 @@ import type {
   MessagePart,
   TokenUsage,
   ToolStatus,
-  AgentMode,
+  AgentMode as _AgentMode,
 } from '../types'
 
 // ============================================================================
