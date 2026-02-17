@@ -1,6 +1,6 @@
 {
   "name": "@furioussoul/openagent",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A lightweight, extensible AI Agent framework with tool calling, MCP integration, and streaming support",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
