@@ -1,11 +1,11 @@
-# mycto_agent
+# @furioussoul/openagent
 
 A lightweight, extensible AI Agent framework with tool calling, streaming, and multi-provider support.
 
 ## 30 Seconds Quick Start
 
 ```typescript
-import { anthropic } from 'mycto_agent'
+import { anthropic } from '@furioussoul/openagent'
 
 const agent = anthropic('your-api-key')
 const result = await agent.chat('Hello!')
@@ -26,7 +26,7 @@ That's it! The agent can read/write files, execute commands, search code, and mo
 ## Installation
 
 ```bash
-npm install mycto_agent
+npm install @furioussoul/openagent
 ```
 
 ## Usage Examples
@@ -34,7 +34,7 @@ npm install mycto_agent
 ### Basic Chat
 
 ```typescript
-import { anthropic } from 'mycto_agent'
+import { anthropic } from '@furioussoul/openagent'
 
 const agent = anthropic(process.env.ANTHROPIC_API_KEY)
 
@@ -59,7 +59,7 @@ for await (const event of agent.stream('Create a hello.txt file')) {
 If you have an `opencode.json` config file, you can load it directly:
 
 ```typescript
-import { OpenAgent, configureFromOpenCodeConfig } from 'mycto_agent'
+import { OpenAgent, configureFromOpenCodeConfig } from '@furioussoul/openagent'
 
 // Load your opencode.json configuration
 const config = require('./opencode.json')
@@ -95,7 +95,7 @@ const result = await agent.chat('Hello!')
 ### Anthropic (Recommended)
 
 ```typescript
-import { anthropic } from 'mycto_agent'
+import { anthropic } from '@furioussoul/openagent'
 
 // Direct API
 const agent = anthropic('sk-ant-xxx')
@@ -112,21 +112,21 @@ const agent = new OpenAgent({
 ### OpenAI
 
 ```typescript
-import { openai } from 'mycto_agent'
+import { openai } from '@furioussoul/openagent'
 const agent = openai('sk-xxx', 'gpt-4o')
 ```
 
 ### Google Gemini
 
 ```typescript
-import { google } from 'mycto_agent'
+import { google } from '@furioussoul/openagent'
 const agent = google('your-api-key', 'gemini-1.5-pro')
 ```
 
 ### OpenAI-Compatible APIs (Together, Groq, DeepSeek, etc.)
 
 ```typescript
-import { OpenAgent } from 'mycto_agent'
+import { OpenAgent } from '@furioussoul/openagent'
 
 // Together AI
 const agent = new OpenAgent({
@@ -198,7 +198,7 @@ const agent = new OpenAgent({
 ### Custom Tools
 
 ```typescript
-import { OpenAgent, defineTool } from 'mycto_agent'
+import { OpenAgent, defineTool } from '@furioussoul/openagent'
 import { z } from 'zod'
 
 const calculator = defineTool({
@@ -280,7 +280,7 @@ const result = await agent.chat(`
 Load specialized knowledge on-demand:
 
 ```typescript
-import { registerSkill, getAvailableSkills } from 'mycto_agent'
+import { registerSkill, getAvailableSkills } from '@furioussoul/openagent'
 
 // Built-in skills: git-expert, code-review, typescript-expert, testing
 
@@ -303,7 +303,7 @@ console.log(getAvailableSkills())
 Track complex tasks with the todowrite tool:
 
 ```typescript
-import { getTodos, setTodos, clearTodos } from 'mycto_agent'
+import { getTodos, setTodos, clearTodos } from '@furioussoul/openagent'
 
 // The agent automatically uses todowrite for complex tasks
 const result = await agent.chat(`
@@ -386,4 +386,4 @@ MIT
 ## Links
 
 - [GitHub](https://github.com/furioussoul/OpenAgent)
-- [npm](https://www.npmjs.com/package/mycto_agent)
+- [npm](https://www.npmjs.com/package/@furioussoul/openagent)
